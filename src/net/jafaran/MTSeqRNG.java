@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ public class MTSeqRNG extends AbstractSeqRNG {
     private static final long serialVersionUID = 1L;
     
     private static final int N = MTUtils.N;
-    private static final int TEMPERING_MASK_B = MTUtils.TEMPERING_MASK_B;
-    private static final int TEMPERING_MASK_C = MTUtils.TEMPERING_MASK_C;
 
     /**
      * Generates exception if used prior to initialization,
@@ -102,19 +100,14 @@ public class MTSeqRNG extends AbstractSeqRNG {
     
     @Override
     public int nextInt() {
-        int s;
+        final int s;
         if (this.mti != 0) {
             s = this.mt[this.mti--];
         } else {
             this.mti = N-1;
             s = MTUtils.toNextState(this.mt);
         }
-        // Tempering.
-        s ^= (s>>>11);
-        s ^= ((s<<7) & TEMPERING_MASK_B);
-        s ^= ((s<<15) & TEMPERING_MASK_C);
-        s ^= (s>>>18);
-        return s;
+        return MTUtils.tempered(s);
     }
 
     /*

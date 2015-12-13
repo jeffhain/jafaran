@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,17 @@
  * with additional nextXXX() methods, and methods to retrieve and restore state.
  * 
  * The names of implementations contain "Conc" (for concurrent) if they are
- * thread-safe, or "Seq" (for sequential) if they are not.
+ * thread-safe and non-blocking, "Sync" (for synchronized) if they are
+ * thread-safe and blocking through synchronization, or "Seq" (for sequential)
+ * if they are not thread-safe.
  * 
- * Also provides a Random-based implementation of Ziggurat algorithm, used by
- * nextGaussian() methods of the provided implementations.
+ * Also provides an implementation of Ziggurat algorithm (based on J. A. Doornik
+ * paper, 2005), used by nextGaussian() methods of the provided implementations.
  * 
  * Principal classes:
  * - Implementations using Mersenne-Twister algorithm (good pseudo-randomness):
  *   - MTConcRNG
+ *   - MTSyncRNG (blocking but apparently faster than MTConcRNG)
  *   - MTSeqRNG
  * - Implementations using Marsaglia Xor-Shift (fast):
  *   - MXSIntSeqRNG (32 bits)

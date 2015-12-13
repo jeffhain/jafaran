@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,14 @@ public class RandomsTest extends TestCase {
         public Random newRandom(Void dummy);
     }
 
+    //--------------------------------------------------------------------------
+    // MEMBERS
+    //--------------------------------------------------------------------------
+    
+    private static final int MT_TYPE_SEQ = 0;
+    private static final int MT_TYPE_SYNC = 1;
+    private static final int MT_TYPE_CONC = 2;
+    
     //--------------------------------------------------------------------------
     // PUBLIC METHODS
     //--------------------------------------------------------------------------
@@ -900,7 +908,7 @@ public class RandomsTest extends TestCase {
     }
     
     public void test_MersenneTwisters_constructor_intArray_int() {
-        for (boolean conc : new boolean[]{false,true}) {
+        for (int mtType : new int[]{MT_TYPE_SEQ, MT_TYPE_SYNC, MT_TYPE_CONC}) {
             
             /*
              * Exceptions.
@@ -908,7 +916,7 @@ public class RandomsTest extends TestCase {
             
             for (int keyLength : new int[]{Integer.MIN_VALUE,-1,0}) {
                 try {
-                    new_mt(conc, new int[1], keyLength);
+                    new_mt(mtType, new int[1], keyLength);
                     assertTrue(false);
                 } catch (IllegalArgumentException e) {
                     // ok
@@ -916,7 +924,7 @@ public class RandomsTest extends TestCase {
             }
             
             try {
-                new_mt(conc, null, 1);
+                new_mt(mtType, null, 1);
                 assertTrue(false);
             } catch (NullPointerException e) {
                 // ok
@@ -931,10 +939,10 @@ public class RandomsTest extends TestCase {
                 final int[] initKey = new int[]{1,2,3,5,7,11};
                 final int keyLength = initKey.length/2;
                 
-                final Random ref = new_mt(conc);
+                final Random ref = new_mt(mtType);
                 setSeed_mt(ref, initKey, keyLength);
                 
-                final Random res = new_mt(conc, initKey, keyLength);
+                final Random res = new_mt(mtType, initKey, keyLength);
                 
                 for (int i=0;i<1000;i++) {
                     assertEquals(ref.nextInt(), res.nextInt());
@@ -945,8 +953,8 @@ public class RandomsTest extends TestCase {
     }
     
     public void test_MersenneTwisters_setSeed_intArray_int() {
-        for (boolean conc : new boolean[]{false,true}) {
-            final Random random = new_mt(conc);
+        for (int mtType : new int[]{MT_TYPE_SEQ, MT_TYPE_SYNC, MT_TYPE_CONC}) {
+            final Random random = new_mt(mtType);
             
             /*
              * Exceptions.
@@ -973,8 +981,8 @@ public class RandomsTest extends TestCase {
              */
             
             {
-                final Random storeless = new_mt(conc, SEED);
-                final Random storeful = new_mt(conc, SEED);
+                final Random storeless = new_mt(mtType, SEED);
+                final Random storeful = new_mt(mtType, SEED);
                 // Might cause stored bits.
                 storeful.nextBoolean();
                 // Must clear stored bits.
@@ -1002,15 +1010,15 @@ public class RandomsTest extends TestCase {
      * Tests Mersenne-Twisters nextInt() output.
      */
     public void test_MersenneTwisters_nextInt() {
-        for (boolean conc : new boolean[]{false,true}) {
-            final Random random = new_mt(conc);
+        for (int mtType : new int[]{MT_TYPE_SEQ, MT_TYPE_SYNC, MT_TYPE_CONC}) {
+            final Random random = new_mt(mtType);
             
             /*
              * Output from
              * http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/MT2002/emt19937ar.html.
              * 
-             * This output uses unsigned 32 integers, to for use with Java int,
-             * which are signed, we might have to cast long value into int type.
+             * This output uses unsigned 32 integers, so for use with Java int,
+             * which are signed, we sometimes have to cast long value into int type.
              * 
              * Only checking first 10 and last 10 values among first 1000 values.
              */
@@ -1062,7 +1070,7 @@ public class RandomsTest extends TestCase {
     /**
      * Tests than concurrent Mersenne-Twisters, when used concurrently,
      * give same booleans, or same bytes, or same shorts, or same ints,
-     * same or longs, than sequential ones.
+     * or same longs, than sequential ones.
      * For test not to use huge and heavy memory structures,
      * generated bits are only counted by chunks of 8 bits.
      * This tests that stored bits are properly propagated from
@@ -1249,21 +1257,47 @@ public class RandomsTest extends TestCase {
         return isAboutZero(count - magnitude/2, magnitude);
     }
     
-    private static AbstractRNG new_mt(boolean conc) {
-        return conc ? new MTConcRNG() : new MTSeqRNG();
+    private static AbstractRNG new_mt(int mtType) {
+        if (mtType == MT_TYPE_SEQ) {
+            return new MTSeqRNG();
+        } else if (mtType == MT_TYPE_SYNC) {
+            return new MTSyncRNG();
+        } else if (mtType == MT_TYPE_CONC) {
+            return new MTConcRNG();
+        } else {
+            throw new AssertionError(""+mtType);
+        }
     }
     
-    private static AbstractRNG new_mt(boolean conc, long seed) {
-        return conc ? new MTConcRNG(seed) : new MTSeqRNG(seed);
+    private static AbstractRNG new_mt(int mtType, long seed) {
+        if (mtType == MT_TYPE_SEQ) {
+            return new MTSeqRNG(seed);
+        } else if (mtType == MT_TYPE_SYNC) {
+            return new MTSyncRNG(seed);
+        } else if (mtType == MT_TYPE_CONC) {
+            return new MTConcRNG(seed);
+        } else {
+            throw new AssertionError(""+mtType);
+        }
     }
 
-    private static AbstractRNG new_mt(boolean conc, int[] initKey, int keyLength) {
-        return conc ? new MTConcRNG(initKey, keyLength) : new MTSeqRNG(initKey, keyLength);
+    private static AbstractRNG new_mt(int mtType, int[] initKey, int keyLength) {
+        if (mtType == MT_TYPE_SEQ) {
+            return new MTSeqRNG(initKey, keyLength);
+        } else if (mtType == MT_TYPE_SYNC) {
+            return new MTSyncRNG(initKey, keyLength);
+        } else if (mtType == MT_TYPE_CONC) {
+            return new MTConcRNG(initKey, keyLength);
+        } else {
+            throw new AssertionError(""+mtType);
+        }
     }
 
     private static void setSeed_mt(Random random, int[] initKey, int keyLength) {
         if (random instanceof MTSeqRNG) {
             ((MTSeqRNG)random).setSeed(initKey, keyLength);
+        } else if (random instanceof MTSyncRNG) {
+            ((MTSyncRNG)random).setSeed(initKey, keyLength);
         } else {
             ((MTConcRNG)random).setSeed(initKey, keyLength);
         }
@@ -1290,6 +1324,11 @@ public class RandomsTest extends TestCase {
         result.add(new MyInterfaceRandomFactory() {
             public Random newRandom(){return new MTConcRNG();}
             public Random newRandom(long seed){return new MTConcRNG(seed);}
+            public Random newRandom(Void dummy){throw new UnsupportedOperationException();}
+        });
+        result.add(new MyInterfaceRandomFactory() {
+            public Random newRandom(){return new MTSyncRNG();}
+            public Random newRandom(long seed){return new MTSyncRNG(seed);}
             public Random newRandom(Void dummy){throw new UnsupportedOperationException();}
         });
         if (sequentialAllowed) {

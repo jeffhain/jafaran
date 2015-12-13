@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,8 +89,8 @@ class MTUtils {
     private static final int MATRIX_A = 0x9908B0DF;
     private static final int UPPER_MASK = 0x80000000;
     private static final int LOWER_MASK = 0x7FFFFFFF;
-    static final int TEMPERING_MASK_B = 0x9D2C5680;
-    static final int TEMPERING_MASK_C = 0xEFC60000;
+    private static final int TEMPERING_MASK_B = 0x9D2C5680;
+    private static final int TEMPERING_MASK_C = 0xEFC60000;
     
     private static final int BIG_SEED_LITTLE_SEED = 19650218;
     private static final int BIG_SEED_FACTOR_1 = 1664525;
@@ -170,5 +170,12 @@ class MTUtils {
         s = (mt[1] & UPPER_MASK) | (mt[N] & LOWER_MASK);
         mt[1] = (mt[N-M+1] ^ (s>>>1)) ^ ((s & 1) * MATRIX_A);
         return mt[N];
+    }
+    
+    static int tempered(int s) {
+        s ^= (s>>>11);
+        s ^= ((s<<7) & TEMPERING_MASK_B);
+        s ^= ((s<<15) & TEMPERING_MASK_C);
+        return s ^ (s>>>18);
     }
 }

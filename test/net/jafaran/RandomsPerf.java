@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ public class RandomsPerf {
     private static final int MIN_PARALLELISM = 1;
     private static final int MAX_PARALLELISM = 2*CEILED_NBR_OF_PROC;
 
-    private static final int NBR_OF_RUNS = 4;
+    private static final int NBR_OF_RUNS = 2;
     
     private static final int NBR_OF_CALLS = 10 * 1000 * 1000;
     
@@ -46,6 +46,12 @@ public class RandomsPerf {
     private static final boolean BENCH_INT_PRIMITIVES_RANGES = true;
     private static final boolean BENCH_FLOATING_POINTS = true;
     private static final boolean BENCH_GAUSSIANS = true;
+    /**
+     * To avoid log-and-time-spam with nextGaussian() and the like,
+     * while we already have performances of the backing nextInt()
+     * and nextLong().
+     */
+    private static final boolean IGNORE_SECONDARY_METHODS_ABOVE_2_THREADS = true;
     
     //--------------------------------------------------------------------------
     // PRIVATE CLASSES
@@ -396,6 +402,14 @@ public class RandomsPerf {
                         bench(random, nbrOfThreads, new MyUser_nextLong());
                     }
                 }
+                
+                /*
+                 * 
+                 */
+                
+                if (IGNORE_SECONDARY_METHODS_ABOVE_2_THREADS && (nbrOfThreads > 2)) {
+                    continue;
+                }
 
                 /*
                  * 
@@ -514,6 +528,9 @@ public class RandomsPerf {
         
         final int nbrOfCallsPerThread = usedNbrOfCalls/nbrOfThreads;
 
+        // For warmup (class load and code optim).
+        user.use(random, NBR_OF_CALLS);
+        
         for (int k=0;k<NBR_OF_RUNS;k++) {
             long a = System.nanoTime();
             if (nbrOfThreads == 1) {
@@ -543,6 +560,7 @@ public class RandomsPerf {
         result.add(new Random());
         result.add(new RandomConcRNG());
         result.add(new MTConcRNG());
+        result.add(new MTSyncRNG());
         if (sequentialAllowed) {
             result.add(SEQ_PILL);
             // TODO Java7 result.add(ThreadLocalRandom.current());

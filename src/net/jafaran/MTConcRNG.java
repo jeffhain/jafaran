@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,8 +63,6 @@ public class MTConcRNG extends AbstractRNG {
     private static final long serialVersionUID = 1L;
     
     private static final int N = MTUtils.N;
-    private static final int TEMPERING_MASK_B = MTUtils.TEMPERING_MASK_B;
-    private static final int TEMPERING_MASK_C = MTUtils.TEMPERING_MASK_C;
 
     /**
      * Generates exception if used prior to initialization,
@@ -128,9 +126,10 @@ public class MTConcRNG extends AbstractRNG {
 
             // Getting random bits.
             final int mti = mti(meta);
-            int s;
-            int newMti;
-            if (mti == 0) {
+            final int s;
+            final int newMti;
+            final boolean useOfNewHolder = (mti == 0);
+            if (useOfNewHolder) {
                 // Can't generate more random bits from this holder.
                 // Creating a new holder, including current stored bits if any.
                 if (newHolder == null) {
@@ -144,24 +143,18 @@ public class MTConcRNG extends AbstractRNG {
                 newMti = mti-1;
             }
 
-            // Tempering.
-            s ^= (s>>>11);
-            s ^= ((s<<7) & TEMPERING_MASK_B);
-            s ^= ((s<<15) & TEMPERING_MASK_C);
-            s ^= (s>>>18);
-
             final long newMeta = metaMtiUpdate(meta, newMti);
 
-            if (mti == 0) {
+            if (useOfNewHolder) {
                 if (setNewMetaAndCompareAndSet(newMeta, this.holderRef, holder, newHolder)) {
-                    return s;
+                    return MTUtils.tempered(s);
                 }
                 // Since holder get, someone else successfully used this holder:
                 // will try to use current one.
                 holder = this.holderRef.get();
             } else {
                 if (holder.compareAndSet(meta, newMeta)) {
-                    return s;
+                    return MTUtils.tempered(s);
                 }
                 // Since meta get, someone else successfully used this holder:
                 // will try to use it again.
@@ -177,56 +170,51 @@ public class MTConcRNG extends AbstractRNG {
         do {
             final long meta = holder.get();
             final int mti = mti(meta);
+            int newMti;
 
-            long result = 0L;
-            
-            int newMti = mti;
-            
-            boolean usedNewHolder = false;
-            for (int i=0;i<2;i++) {
-                // Getting random bits.
-                int s;
-                if (newMti == 0) {
-                    // Can't generate more random bits from this holder.
-                    // Creating a new holder, including current stored bits if
-                    // any.
-                    if (newHolder == null) {
-                        newHolder = new MyStateHolder();
-                    }
-                    System.arraycopy(holder.mt, 0, newHolder.mt, 0, N+1);
-                    s = MTUtils.toNextState(newHolder.mt);
-                    newMti = N-1;
-                    usedNewHolder = true;
-                } else {
-                    if (usedNewHolder) {
-                        s = newHolder.mt[newMti];
-                    } else {
-                        s = holder.mt[newMti];
-                    }
-                    newMti = newMti-1;
+            // Getting some random bits.
+            final int s1;
+            final int s2;
+            final boolean useOfNewHolder = (mti <= 1);
+            if (useOfNewHolder) {
+                // Can't generate enough random bits from this holder.
+                // Creating a new holder, including current stored bits if
+                // any.
+                if (newHolder == null) {
+                    newHolder = new MyStateHolder();
                 }
+                System.arraycopy(holder.mt, 0, newHolder.mt, 0, N+1);
+                final int s = MTUtils.toNextState(newHolder.mt);
+                newMti = N-1;
 
-                // Tempering.
-                s ^= (s>>>11);
-                s ^= ((s<<7) & TEMPERING_MASK_B);
-                s ^= ((s<<15) & TEMPERING_MASK_C);
-                s ^= (s>>>18);
-
-                result = (result<<32) + s;
+                final boolean useOfBitsFromOld = (mti != 0);
+                if (useOfBitsFromOld) {
+                    s1 = holder.mt[mti];
+                    s2 = s;
+                } else {
+                    s1 = s;
+                    s2 = newHolder.mt[newMti];
+                    newMti--;
+                }
+            } else {
+                // General case.
+                s1 = holder.mt[mti];
+                s2 = holder.mt[mti-1];
+                newMti = mti - 2;
             }
 
             final long newMeta = metaMtiUpdate(meta, newMti);
 
-            if (usedNewHolder) {
+            if (useOfNewHolder) {
                 if (setNewMetaAndCompareAndSet(newMeta, this.holderRef, holder, newHolder)) {
-                    return result;
+                    return (((long)MTUtils.tempered(s1))<<32) + MTUtils.tempered(s2);
                 }
                 // Since holder get, someone else successfully used this
                 // holder: will try to use current one.
                 holder = this.holderRef.get();
             } else {
                 if (holder.compareAndSet(meta, newMeta)) {
-                    return result;
+                    return (((long)MTUtils.tempered(s1))<<32) + MTUtils.tempered(s2);
                 }
                 // Since meta get, someone else successfully used this holder:
                 // will try to use it again.
@@ -315,8 +303,9 @@ public class MTConcRNG extends AbstractRNG {
                 // Not enough stored bits: getting more random bits.
                 final int mti = mti(meta);
                 int s;
-                int newMti;
-                if (mti == 0) {
+                final int newMti;
+                final boolean useOfNewHolder = (mti == 0);
+                if (useOfNewHolder) {
                     // Can't generate more random bits from this holder.
                     // Creating a new holder, including current stored bits if
                     // any.
@@ -331,11 +320,7 @@ public class MTConcRNG extends AbstractRNG {
                     newMti = mti-1;
                 }
                 
-                // Tempering.
-                s ^= (s>>>11);
-                s ^= ((s<<7) & TEMPERING_MASK_B);
-                s ^= ((s<<15) & TEMPERING_MASK_C);
-                s ^= (s>>>18);
+                s = MTUtils.tempered(s);
                 
                 // number of new random bits to add to the value
                 final int nbrOfNewBitsUsed = nbrOfBits - nbrOfStoredBits;
@@ -347,7 +332,7 @@ public class MTConcRNG extends AbstractRNG {
                 final int newStoredBits = ((s & ((1<<newNbrOfStoredBits)-1)));
                 final long newMeta = meta(newStoredBits, newNbrOfStoredBits, newMti);
                 
-                if (mti == 0) {
+                if (useOfNewHolder) {
                     if (setNewMetaAndCompareAndSet(newMeta, this.holderRef, holder, newHolder)) {
                         return result;
                     }

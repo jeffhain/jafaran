@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Jeff Hain
+ * Copyright 2014-2015 Jeff Hain
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public abstract class AbstractSeqRNG extends AbstractRNG {
 
     /*
      * Not doing such a class for concurrent RNGs, since storing benefit might
-     * be neglectable compared to synchronization costs, and storing mechanics
+     * be negligible compared to synchronization costs, and storing mechanics
      * could have to be hacked into each RNG's concurrency logic.
      */
     
@@ -81,7 +81,7 @@ public abstract class AbstractSeqRNG extends AbstractRNG {
     }
     
     /**
-     * If nbrOfBits is too large, storing overhead by not be worth it,
+     * If nbrOfBits is too large, storing overhead might not be worth it,
      * so it might be better to use nextInt() instead.
      */
     @Override

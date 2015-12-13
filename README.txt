@@ -3,6 +3,8 @@ Jafaran x.x, xxxx/xx/xx
 
 Changes since version 1.0 :
 
+- Using a more standard layout for files.
+
 - Added SyncRNG, which adds synchronization on top of a RNG, and MTSyncRNG
   which makes use of it, and is apparently faster than MTConcRNG.
   "Sync" is now a new keyword, that identifies implementations that are

@@ -43,7 +43,7 @@ public class Ziggurat {
      *     in [-1,1[, and the 8 LSBits of it for the index.
      * - We do the first test with integer arithmetic,
      *   avoiding the use of Math.abs(double), and using
-     *   NumbersUtils.absNeg for int bits, to handle
+     *   RandomUtilz.absNeg for int bits, to handle
      *   Integer.MIN_VALUE. With server VM it looks around
      *   ten percents faster.
      * - The efficiency of the rare cases actually matters, because they are
